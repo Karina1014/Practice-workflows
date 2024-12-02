@@ -57,10 +57,10 @@ jobs:
 
           # Detener cualquier contenedor en ejecución del proyecto actual
           cd ~/myapp
-          docker-compose down || true
+          sudo docker-compose down || true
 
           # Levantar el nuevo contenedor con docker-compose
-          docker-compose up -d
+          sudo docker-compose up -d
 
           # Verificar contenedores en ejecución
-          docker ps
+          sudo docker ps
