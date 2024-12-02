@@ -1,5 +1,8 @@
+# Usar la última imagen oficial de Nginx como base
 FROM nginx:latest
 
+# Copiar archivos HTML y CSS al directorio predeterminado de Nginx
+# /usr/share/nginx/html es donde Nginx busca contenido por defecto
 COPY index.html /usr/share/nginx/html/
 COPY styles.css /usr/share/nginx/html/
 
