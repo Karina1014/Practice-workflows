@@ -5,8 +5,8 @@ COPY index.html /usr/share/nginx/html/
 COPY styles.css /usr/share/nginx/html/
 COPY 404.html /usr/share/nginx/html/
 
-# Copiar el archivo de configuración personalizado de Nginx
-COPY config/nginx.conf /etc/nginx/nginx.conf
+# Copiar el archivo de configuración personalizado de Nginx desde la carpeta 'nginx'
+COPY nginx/nginx.conf /etc/nginx/nginx.conf
 
 # Exponer el puerto 80 para el tráfico HTTP
 EXPOSE 80
