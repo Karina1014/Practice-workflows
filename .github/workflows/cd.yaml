@@ -21,13 +21,13 @@ jobs:
         username: ${{ secrets.DOCKER_USERNAME }}
         password: ${{ secrets.DOCKER_TOKEN }}
 
-    # 3. Construir y publicar la imagen Docker desde el código actual
+    # 3. Construir y publicar la imagen Docker
     - name: Build and push Docker image
       run: |
         docker build -t ${{ secrets.DOCKER_USERNAME }}/myapp:latest .
         docker push ${{ secrets.DOCKER_USERNAME }}/myapp:latest
 
-    # 4. Conectarse al servidor EC2 y ejecutar el despliegue
+    # 4. Conectarse al servidor EC2 y desplegar
     - name: SSH into EC2 and deploy
       uses: appleboy/ssh-action@v1.2.0
       with:
@@ -35,31 +35,35 @@ jobs:
         username: ubuntu
         key: ${{ secrets.SERVER_KEY }}
         script: |
-          # Actualizar dependencias del servidor
+          # Actualizar dependencias
           sudo apt update && sudo apt install -y docker.io docker-compose
           sudo systemctl enable --now docker
 
-          # Crear directorio del proyecto si no existe
+          # Crear directorio del proyecto (si no existe)
           mkdir -p ~/myapp
 
-          # Subir los ficheros relevantes desde el repositorio
-          echo "Uploading docker-compose.yml"
+          # Si ya tienes el archivo docker-compose.yml en tu repositorio, puedes copiarlo en vez de generarlo aquí
+          echo "Subiendo docker-compose.yml"
+          # Si prefieres copiarlo desde el repositorio, puedes usar el siguiente comando:
+          # git clone https://github.com/tuusuario/tu-repositorio ~/myapp
+
+          # Crear archivo docker-compose.yml si no está en el repositorio
           echo -e "
           version: '3.9'
           services:
-            nginx:
+            web:
               image: ${{ secrets.DOCKER_USERNAME }}/myapp:latest
-              container_name: nginx_server
+              container_name: myapp_container
               ports:
                 - '80:80'
               restart: always
           " > ~/myapp/docker-compose.yml
 
-          # Detener cualquier contenedor en ejecución del proyecto actual
+          # Ir al directorio del proyecto
           cd ~/myapp
-          sudo docker-compose down || true
 
-          # Levantar el nuevo contenedor con docker-compose
+          # Detener contenedores existentes y desplegar los nuevos
+          sudo docker-compose down || true
           sudo docker-compose up -d
 
           # Verificar contenedores en ejecución
