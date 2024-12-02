@@ -68,3 +68,5 @@ jobs:
 
             # 10. Verificar los contenedores en ejecución
             sudo docker ps
+
+            
