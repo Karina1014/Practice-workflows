@@ -14,33 +14,56 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v3
 
-    # 2. Sincronizar archivos actualizados al servidor EC2
-    - name: Sync files to EC2
+    # 2. Loguearse en Docker Hub
+    - name: Log in to Docker Hub
+      uses: docker/login-action@v2
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_TOKEN }}
+
+    # 3. Construir y publicar la imagen Docker desde el código actual
+    - name: Build and push Docker image
+      run: |
+        docker build -t ${{ secrets.DOCKER_USERNAME }}/myapp:latest .
+        docker push ${{ secrets.DOCKER_USERNAME }}/myapp:latest
+
+    # 4. Añadir clave del servidor EC2 a known_hosts
+    - name: Add EC2 server to known_hosts
+      run: |
+        ssh-keyscan -H ${{ secrets.EC2_SERVER }} >> ~/.ssh/known_hosts
+
+    # 5. Conectarse al servidor EC2 y ejecutar el despliegue
+    - name: SSH into EC2 and deploy
       uses: appleboy/ssh-action@v1.2.0
       with:
         host: ${{ secrets.EC2_SERVER }}
         username: ubuntu
         key: ${{ secrets.SERVER_KEY }}
         script: |
-          # Crear directorio si no existe
+          # Actualizar dependencias del servidor
+          sudo apt update && sudo apt install -y docker.io docker-compose
+          sudo systemctl enable --now docker
+
+          # Crear directorio del proyecto si no existe
           mkdir -p ~/myapp
 
-          # Sincronizar los archivos del proyecto (ajustar el directorio si es necesario)
-          rsync -avz --delete ./ ubuntu@${{ secrets.EC2_SERVER }}:~/myapp/
+          # Subir docker-compose.yml al servidor
+          echo -e "
+          version: '3.9'
+          services:
+            nginx:
+              image: ${{ secrets.DOCKER_USERNAME }}/myapp:latest
+              container_name: nginx_server
+              ports:
+                - '80:80'
+              restart: always
+          " > ~/myapp/docker-compose.yml
 
-    # 3. Reiniciar contenedores en EC2
-    - name: Restart containers on EC2
-      uses: appleboy/ssh-action@v1.2.0
-      with:
-        host: ${{ secrets.EC2_SERVER }}
-        username: ubuntu
-        key: ${{ secrets.SERVER_KEY }}
-        script: |
-          # Navegar al directorio del proyecto
+          # Detener contenedores en ejecución, si existen
           cd ~/myapp
-
-          # Reiniciar contenedores con docker-compose
           sudo docker-compose down || true
+
+          # Levantar el nuevo contenedor con docker-compose
           sudo docker-compose up -d
 
           # Verificar contenedores en ejecución
