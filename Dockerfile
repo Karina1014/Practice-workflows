@@ -1,17 +1,16 @@
-# Imagen base de Nginx
 FROM nginx:latest
 
-# Copiar el archivo de configuración personalizado
-COPY config/nginx.conf /etc/nginx/nginx.conf
+# Copiar archivos de la aplicación al contenedor
+COPY index.html /usr/share/nginx/html/
+COPY styles.css /usr/share/nginx/html/
+COPY 404.html /usr/share/nginx/html/
 
-# Copiar los archivos de la aplicación web
-COPY html/index.html /usr/share/nginx/html/
-COPY html/styles.css /usr/share/nginx/html/
-COPY html/404.html /usr/share/nginx/html/
+# Copiar el archivo de configuración personalizado de Nginx
+COPY config/nginx.conf /etc/nginx/nginx.conf
 
 # Exponer el puerto 80 para el tráfico HTTP
 EXPOSE 80
 
-# Healthcheck para verificar que el servicio está activo
+# Agregar un healthcheck para verificar el estado de Nginx
 HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
   CMD curl -f http://localhost/ || exit 1
