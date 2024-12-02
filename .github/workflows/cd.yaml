@@ -14,52 +14,33 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v3
 
-    # 2. Loguearse en Docker Hub
-    - name: Log in to Docker Hub
-      uses: docker/login-action@v2
-      with:
-        username: ${{ secrets.DOCKER_USERNAME }}
-        password: ${{ secrets.DOCKER_TOKEN }}
-
-    # 3. Construir y publicar la imagen Docker desde el código actual
-    - name: Build and push Docker image
-      run: |
-        docker build -t ${{ secrets.DOCKER_USERNAME }}/myapp:latest .
-        docker push ${{ secrets.DOCKER_USERNAME }}/myapp:latest
-
-    # 4. Conectarse al servidor EC2 y ejecutar el despliegue
-    - name: SSH into EC2 and deploy
+    # 2. Sincronizar archivos actualizados al servidor EC2
+    - name: Sync files to EC2
       uses: appleboy/ssh-action@v1.2.0
       with:
         host: ${{ secrets.EC2_SERVER }}
         username: ubuntu
         key: ${{ secrets.SERVER_KEY }}
         script: |
-          # Actualizar dependencias del servidor
-          sudo apt update && sudo apt install -y docker.io docker-compose
-          sudo systemctl enable --now docker
-
-          # Crear directorio del proyecto si no existe
+          # Crear directorio si no existe
           mkdir -p ~/myapp
 
-          # Subir los ficheros relevantes desde el repositorio
-          echo "Uploading docker-compose.yml"
-          echo -e "
-          version: '3.9'
-          services:
-            nginx:
-              image: ${{ secrets.DOCKER_USERNAME }}/myapp:latest
-              container_name: nginx_server
-              ports:
-                - '80:80'
-              restart: always
-          " > ~/myapp/docker-compose.yml
+          # Sincronizar los archivos del proyecto (ajustar el directorio si es necesario)
+          rsync -avz --delete ./ ubuntu@${{ secrets.EC2_SERVER }}:~/myapp/
 
-          # Detener cualquier contenedor en ejecución del proyecto actual
+    # 3. Reiniciar contenedores en EC2
+    - name: Restart containers on EC2
+      uses: appleboy/ssh-action@v1.2.0
+      with:
+        host: ${{ secrets.EC2_SERVER }}
+        username: ubuntu
+        key: ${{ secrets.SERVER_KEY }}
+        script: |
+          # Navegar al directorio del proyecto
           cd ~/myapp
-          sudo docker-compose down || true
 
-          # Levantar el nuevo contenedor con docker-compose
+          # Reiniciar contenedores con docker-compose
+          sudo docker-compose down || true
           sudo docker-compose up -d
 
           # Verificar contenedores en ejecución
