@@ -6,13 +6,6 @@ FROM nginx:latest
 COPY index.html /usr/share/nginx/html/
 COPY styles.css /usr/share/nginx/html/
 
-# Copiar un archivo de configuración personalizado para Nginx
-# Este archivo define ajustes como compresión y seguridad
-COPY nginx.conf /etc/nginx/nginx.conf
-
-# Copiar una página de error 404 personalizada
-COPY 404.html /usr/share/nginx/html/
-
 # Exponer el puerto 80 para el tráfico HTTP
 EXPOSE 80
 
