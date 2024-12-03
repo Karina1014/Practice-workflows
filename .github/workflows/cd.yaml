@@ -3,70 +3,73 @@ name: Deploy to EC2
 on:
   push:
     branches:
-      - main  # Se ejecuta cuando haya un 'push' a la rama principal
+      - main
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest  # Usa una imagen de Ubuntu para ejecutar los pasos
+    runs-on: ubuntu-latest
 
     steps:
-      # 1. Descargar el código del repositorio
-      - name: Checkout code
-        uses: actions/checkout@v3
+    # 1. Descargar el código del repositorio
+    - name: Checkout code
+      uses: actions/checkout@v3
 
-      # 2. Loguearse en Docker Hub
-      - name: Log in to Docker Hub
-        uses: docker/login-action@v2
-        with:
-          username: ${{ secrets.DOCKER_USERNAME }}  # Tu usuario de Docker Hub
-          password: ${{ secrets.DOCKER_TOKEN }}  # Tu token de Docker Hub
+    # 2. Loguearse en Docker Hub
+    - name: Log in to Docker Hub
+      uses: docker/login-action@v2
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_TOKEN }}
 
-      # 3. Construir y publicar la imagen Docker desde el código actual
-      - name: Build and push Docker image
-        run: |
-          docker build -t ${{ secrets.DOCKER_USERNAME }}/myapp:latest .  # Construir la imagen
-          docker push ${{ secrets.DOCKER_USERNAME }}/myapp:latest  # Subir la imagen a Docker Hub
+    # 3. Construir y publicar la imagen Docker desde el código actual
+    - name: Build and push Docker image
+      run: |
+        docker build -t ${{ secrets.DOCKER_USERNAME }}/myapp:latest .
+        docker push ${{ secrets.DOCKER_USERNAME }}/myapp:latest
 
-      # 4. Conectarse al servidor EC2 y ejecutar el despliegue
-      - name: SSH into EC2 and deploy
-        uses: appleboy/ssh-action@v1.2.0
-        with:
-          host: ${{ secrets.EC2_SERVER }}  # IP pública del servidor EC2
-          username: ubuntu  # Nombre de usuario para acceder al servidor
-          key: ${{ secrets.SERVER_KEY }}  # Clave SSH para acceder al servidor EC2
-          script: |
-            # 5. Actualizar dependencias del servidor
-            sudo apt update -y
-            sudo apt install -y docker.io docker-compose  # Instalar Docker y Docker Compose si no están instalados
-            sudo systemctl enable --now docker  # Iniciar y habilitar Docker
+    # 4. Conectarse al servidor EC2 y ejecutar el despliegue
+    - name: SSH into EC2 and deploy
+      uses: appleboy/ssh-action@v1.2.0
+      with:
+        host: ${{ secrets.EC2_SERVER }}
+        username: ubuntu
+        key: ${{ secrets.SERVER_KEY }}
+        script: |
+          # Actualizar dependencias del servidor
+          sudo apt update && sudo apt install -y docker.io docker-compose
+          sudo systemctl enable --now docker
 
-            # 6. Crear directorio para el proyecto
-            mkdir -p ~/myapp
+          # Crear directorio del proyecto si no existe
+          sudo mkdir -p ~/myapp
 
-            # 7. Crear archivo docker-compose.yml
-            echo "Uploading docker-compose.yml"
-            echo -e "
-            version: '3.9'
-            services:
-              nginx:
-                image: ${{ secrets.DOCKER_USERNAME }}/myapp:latest
-                container_name: nginx_server
-                ports:
-                  - '80:80'
-                restart: always
-            networks:
-              nginx_net:
-                driver: bridge
-            " > ~/myapp/docker-compose.yml
+          # Subir el archivo docker-compose.yml actualizado
+          sudo echo -e "
+          services:
+            nginx:
+              image: ${{ secrets.DOCKER_USERNAME }}/myapp:latest
+              container_name: nginx_server
+              ports:
+                - '80:80'
+              restart: always
+          " > ~/myapp/docker-compose.yml
 
-            # 8. Detener cualquier contenedor en ejecución del proyecto actual
-            cd ~/myapp
-            sudo docker-compose down || true  # Detener cualquier contenedor anterior
+          # Verificar el contenido del archivo docker-compose.yml
+          sudo cat ~/myapp/docker-compose.yml
 
-            # 9. Levantar el nuevo contenedor con docker-compose
-            sudo docker-compose up -d  # Levantar el contenedor en segundo plano
+          # Descargar la última versión de la imagen desde Docker Hub
+          cd ~/myapp
+          sudo docker-compose pull
 
-            # 10. Verificar los contenedores en ejecución
-            sudo docker ps
+          # Detener cualquier contenedor en ejecución del proyecto actual
+          sudo docker-compose down || true
 
-            
+          # Levantar el nuevo contenedor con docker-compose
+          sudo docker-compose up -d
+
+          # Verificar los contenedores en ejecución
+          sudo docker ps
+
+          # Verificar los logs del contenedor
+          sudo docker logs nginx_server
+
+          
