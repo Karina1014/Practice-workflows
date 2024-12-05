@@ -1,15 +1,12 @@
-# Usar la última imagen oficial de Nginx como base
+# Use the base Nginx image
 FROM nginx:latest
 
-# Copiar archivos HTML y CSS al directorio predeterminado de Nginx
-# /usr/share/nginx/html es donde Nginx busca contenido por defecto
-COPY index.html /usr/share/nginx/html/
-COPY styles.css /usr/share/nginx/html/
+# Copy all files from the local "public" directory to the Nginx default HTML directory
+COPY public/ /usr/share/nginx/html/
 
-# Exponer el puerto 80 para el tráfico HTTP
+# Expose port 80 to allow HTTP traffic
 EXPOSE 80
 
-# Agregar un healthcheck para verificar que el servicio esté en funcionamiento
-# Realiza una solicitud a la raíz del servidor y devuelve un error si falla
+# Add a healthcheck to verify that the Nginx service is running
 HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
   CMD curl -f http://localhost/ || exit 1
