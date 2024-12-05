@@ -51,7 +51,7 @@ jobs:
               ports:
                 - '80:80'
               restart: always
-          " > ~/myapp/docker-compose.yml
+          " | sudo tee ~/myapp/docker-compose.yml > /dev/null
 
           # Verificar el contenido del archivo docker-compose.yml
           sudo cat ~/myapp/docker-compose.yml
@@ -71,5 +71,3 @@ jobs:
 
           # Verificar los logs del contenedor
           sudo docker logs nginx_server
-
-          
